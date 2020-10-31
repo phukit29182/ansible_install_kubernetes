@@ -1,0 +1,22 @@
+[DockerHost]
+10.148.0.42
+10.148.0.43
+10.148.0.44
+
+[master]
+10.148.0.42
+
+[worker]
+10.148.0.43
+10.148.0.44
+
+[all:vars]
+ansible_connection=ssh
+#ansible_user=
+#ansible_ssh_pass=
+ansible_become=true
+ansible_become_user=root
+#ansible_become_pass=
+#ansible_become_method=su
+#[defaults]
+#host_key_checking = false
