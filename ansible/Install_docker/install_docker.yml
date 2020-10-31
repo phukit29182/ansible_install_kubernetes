@@ -1,0 +1,87 @@
+---
+- hosts: DockerHost
+  tasks:
+
+  # Install yum-utils 
+    - name: Install yum-util
+      yum: 
+        name: yum-utils
+        state: present
+
+  # Add docker repository
+    - name: yum-config-manager --add-repo docker
+      command: yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+
+  # Add kubeadm repository
+    - name: Add kubeadm repository
+      copy:
+        dest: /etc/yum.repos.d/kubernetes.repo
+        content: |
+         [kubernetes]
+         name=Kubernetes
+         baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+         enabled=1
+         gpgcheck=1
+         repo_gpgcheck=1
+         gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+
+   # Install docker 
+    - name: Install docker
+      yum:
+        name: "{{ packages }}" 
+        state: present
+      vars:
+        packages:
+        - docker-ce
+        - docker-ce-cli
+        - containerd.io
+      notify:
+      - restart docker
+
+    # Install kubeadm 
+    - name: Install kubeadm
+      yum: 
+        name: kubeadm
+        state: present
+
+   # Enable docker service and start docker service
+    - name: start and enable docker 
+      service:
+        name: docker
+        state: started
+        enabled: True
+
+    # Limit docker log 50M  
+    - name: config limit log 50M
+      copy:
+        dest: /etc/docker/daemon.json
+        content: |
+                {
+                "log-opts": {
+                    "max-size": "50m",
+                    "max-file": "5"
+                            }
+                }
+      notify:
+      - restart docker
+
+    # Enable kubeadm service and start kubeadm service
+    - name: start and enable kubeadm 
+      service:
+        name: kubelet
+        state: started
+        enabled: True                 
+
+    # Restart docker service
+    - name: Restart docker
+      service:
+        name: docker
+        state: restarted
+
+
+  handlers:
+    # handlers service kubeadm
+    - name: restart docker 
+      service:
+        name: docker
+        state: restarted

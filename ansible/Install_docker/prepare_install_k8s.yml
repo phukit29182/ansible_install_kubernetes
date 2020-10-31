@@ -1,0 +1,73 @@
+---
+- hosts: DockerHost
+  vars_files:
+  - ../environment/env_file
+  tasks:
+            
+      # Stop service firewalld and disable service
+    - name: Stop and disable firewalld 
+      service:
+        name: firewalld
+        state: stopped
+        enabled: False
+ 
+   # Disable selinux 
+    - name: Disable SELinux
+      selinux:
+        state: disabled
+ 
+   # Disable NetworkManager
+    - name: Stop and disable NetworkManager 
+      service:
+        name: NetworkManager
+        state: stopped
+        enabled: False
+ 
+   # Remove swapfile from /etc/fstab
+    - name: Remove swapfile from /etc/fstab
+      mount:
+        name: swap
+        fstype: swap
+        state: absent
+
+    # Enable  bridge-nf-call-iptables
+    - name: Enable  bridge-nf-call-iptables
+      command:  echo '1' > /proc/sys/net/bridge/bridge-nf-call-iptables
+
+   # Disable swap 
+    - name: Disable swap
+      command: /sbin/swapoff -a
+
+    # Add vm.max_map_count
+    - sysctl:
+       name: vm.max_map_count
+       value: '262144'
+       sysctl_file: /etc/sysctl.conf
+
+    # Add hosts name in file /etc/hosts
+    - name: add a list of hosts to /etc/hosts
+      become: yes
+      lineinfile:
+        dest: /etc/hosts
+        regexp: "^{{ item['ip'] }}.*$"
+        line: "{{ item['ip'] }}\t\t{{ item['names'] | join(' ') }}"
+        state: present
+      with_items:
+      - ip: "{{ k8s_master[1] }}"
+        names:
+        - "{{ k8s_master[0] }}"
+      - ip: "{{ k8s_worker1[1] }}"
+        names:
+        - "{{ k8s_worker1[0] }}"
+      - ip: "{{ k8s_worker2[1] }}"
+        names:
+        - "{{ k8s_worker2[0] }}"
+ 
+   # Reboot server after disable selinux   
+    - name: Reboot the server
+      tags: reboot
+      become: yes
+      become_user: root
+      shell: "sleep 5 && reboot"
+      async: 1
+      poll: 0
